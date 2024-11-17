@@ -9,15 +9,18 @@
 </head>
 <style>
     @media (max-width: 767.98px) {
+
         /* 小於 md 的螢幕尺寸 */
         .button-grid {
             grid-template-columns: repeat(3, 1fr);
         }
     }
+
     body {
         background-color: #D6C0B3;
         font-family: Arial, sans-serif;
     }
+
     .budget-bar {
         background-color: #D6C0B3;
         border: 2px solid #493628;
@@ -33,6 +36,7 @@
         align-items: center;
         /* 垂直居中 */
     }
+
     .progress {
         flex-grow: 1;
         /* 讓進度條填滿剩餘空間 */
@@ -40,26 +44,31 @@
         /* 讓預算值與邊緣有一點距離 */
         margin-right: 1%;
     }
+
     .progress-bar {
         height: 100%;
         transition: width 0.3s, background-color 0.3s;
         border-radius: 5px;
     }
+
     .budget-value {
         font-size: larger;
         font-weight: bold;
         margin-left: 1%;
     }
+
     #dataTable {
         border-radius: 7px;
         /* 為整個表格設置圓角 */
         overflow: hidden;
         /* 避免內容超出圓角範圍 */
     }
+
     #dataTable th,
     #dataTable td {
         border: 2px solid #493628;
     }
+
     #dataTable td {
         white-space: nowrap;
         /* 防止換行 */
@@ -68,12 +77,15 @@
         text-overflow: ellipsis;
         /* 用省略號表示溢出的內容 */
     }
+
     .date-column {
         width: 20%;
     }
+
     .category-column {
         width: 50%;
     }
+
     .price-column {
         width: 30%;
         text-align: end;
@@ -143,17 +155,17 @@
 
         function fetchData() {
             // 假設 token 儲存在 localStorage 或 sessionStorage 中
-            /*const token = localStorage.getItem('token'); // 或者用 sessionStorage.getItem('token');
+            const token = localStorage.getItem('token'); // 或者用 sessionStorage.getItem('token');
             if (!token) {   // 檢查是否有 token
                 alert('請重新登入');
                 window.location.href = 'login.html';
-            }*/
+            }
             // 發送請求，攜帶 token 作為 Authorization 標頭
             fetch('/Account', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json', // 設置請求的內容類型
-                    //'Authorization': `Bearer ${token}`  // 攜帶 token
+                    'Authorization': `Bearer ${token}`  // 攜帶 token
                 }
             })
                 .then(response => {
