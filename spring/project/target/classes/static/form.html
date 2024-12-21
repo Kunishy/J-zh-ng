@@ -266,16 +266,19 @@
         let selectedType = 'expense';   //預設為支出
         //選擇類別的函數
         function selectCategory(category, iconClass) {
+            selectedIconDiv.innerHTML = `<i class="bi ${iconClass}"></i>`;  //更新顯示的圖標
+            selectedCategoryInput.value = category;
+            selectedType = event.currentTarget.getAttribute('data-type');
+            //console.log(selectedType);
             if (category === '自定義') {
                 //顯示自定義類別的輸入框
                 document.getElementById('customCategoryInput').style.display = 'block';
                 isCustomCategory = true;
                 return; //不更新icon，讓使用者輸入自定義類別名稱
+            } else {
+                document.getElementById('customCategoryInput').style.display = 'none';
+                isCustomCategory = false;
             }
-
-            selectedIconDiv.innerHTML = `<i class="bi ${iconClass}"></i>`;  //更新顯示的圖標
-            selectedCategoryInput.value = category;
-            selectedType = event.currentTarget.getAttribute('data-type');
             modal.style.display = 'none'; // 自動關閉視窗
         }
 
