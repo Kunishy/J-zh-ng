@@ -724,6 +724,54 @@
         document.getElementById('addAccountButton').addEventListener('click', function () {
             window.location.href = 'form.html';
         });
+
+        document.getElementById('showChartButton').addEventListener('click', function () {
+            window.location.href = 'pie.html';
+        });
+
+        document.getElementById('exportButton').addEventListener('click', function () {
+            // 取得所有帶有 data-id 的行
+            const rows = document.querySelectorAll('.clickable-row');
+            const data = [];
+            const seenIds = new Set();  // 用來儲存已經處理過的 ID，避免重複
+
+            rows.forEach(row => {
+                // 取得類別（文字內容）
+                const category = row.textContent.trim();
+
+                // 取得價格（從相同的行中查找價格）
+                const priceCell = row.closest('tr').querySelectorAll('td')[1];
+                const priceText = priceCell.textContent.trim();
+                const price = parseFloat(priceText.replace('$', ''));
+
+                // 確認 data-id 屬性
+                const id = row.getAttribute('data-id');
+
+                // 如果這個 ID 還沒被處理過，就加入資料
+                if (!seenIds.has(id)) {
+                    seenIds.add(id);  // 標記這個 ID 已經處理過
+                    data.push({ id, category, price });
+                }
+            });
+
+            // 將資料轉換為 CSV 格式
+            const csvContent = [
+                // 加入 CSV 標題行
+                ['ID', '類別', '價格'],
+                ...data.map(row => [row.id, row.category, row.price])
+            ]
+                .map(row => row.join(','))
+                .join('\n');
+
+            // 在 CSV 開頭加入 BOM 以確保 Excel 正確識別 UTF-8 編碼
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'example.csv';
+            link.click();
+        });
+
+
     </script>
 </body>
 
