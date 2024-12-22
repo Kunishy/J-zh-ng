@@ -728,47 +728,77 @@
         document.getElementById('showChartButton').addEventListener('click', function () {
             window.location.href = 'pie.html';
         });
-
+        
+        //匯出excel
         document.getElementById('exportButton').addEventListener('click', function () {
-            // 取得所有帶有 data-id 的行
-            const rows = document.querySelectorAll('.clickable-row');
-            const data = [];
-            const seenIds = new Set();  // 用來儲存已經處理過的 ID，避免重複
+            // 假設 token 儲存在 localStorage 或 sessionStorage 中
+            const token = localStorage.getItem('token'); // 或者用 sessionStorage.getItem('token');
+            if (!token) {   // 檢查是否有 token
+                alert('沒有找到有效的身份驗證 token');
+                return;
+            }
 
-            rows.forEach(row => {
-                // 取得類別（文字內容）
-                const category = row.textContent.trim();
-
-                // 取得價格（從相同的行中查找價格）
-                const priceCell = row.closest('tr').querySelectorAll('td')[1];
-                const priceText = priceCell.textContent.trim();
-                const price = parseFloat(priceText.replace('$', ''));
-
-                // 確認 data-id 屬性
-                const id = row.getAttribute('data-id');
-
-                // 如果這個 ID 還沒被處理過，就加入資料
-                if (!seenIds.has(id)) {
-                    seenIds.add(id);  // 標記這個 ID 已經處理過
-                    data.push({ id, category, price });
+            // 發送請求，攜帶 token 作為 Authorization 標頭
+            fetch('/Account', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json', // 設置請求的內容類型
+                    'Authorization': `Bearer ${token}`  // 攜帶 token
                 }
-            });
+            })
+                .then(response => {
+                    if (!response.ok) { // 檢查響應是否成功
+                        throw new Error(`API 請求失敗，錯誤代碼: ${response.status}`);
+                    }
+                    return response.json(); // 解析返回的 JSON
+                })
+                .then(data => {
+                    console.log(data)
+                    const allData = [];
+                    data.forEach(item => {  //如果有'account'和'recurringAccount'，將它們合併到allData
+                        if (item.account) {
+                            const accountData = { ...item.account };  // 直接push'account'內的資料                       
+                            accountData.recurrenceType = item.recurringAccount?.recurrenceType || 'x';
+                            allData.push(accountData);
+                        }
+                    });
+                    // 選擇要輸出的欄位
+                    const selectedFields = ['time', 'category', 'remark', 'price', 'recurrenceType'];
+                    const headers = {
+                        time: '時間',
+                        category: '類別',
+                        remark: '備註',
+                        price: '金額',
+                        recurrenceType: '重複類型'
+                    };
 
-            // 將資料轉換為 CSV 格式
-            const csvContent = [
-                // 加入 CSV 標題行
-                ['ID', '類別', '價格'],
-                ...data.map(row => [row.id, row.category, row.price])
-            ]
-                .map(row => row.join(','))
-                .join('\n');
+                    // 建立 CSV 資料
+                    const csvRows = [];
+                    csvRows.push(selectedFields.map(field => headers[field]).join(',')); // 表頭 (中文)
+                    allData.forEach(row => {
+                        csvRows.push(selectedFields.map(field => `"${row[field] || ''}"`).join(','));
+                    });
+                    const csvContent = csvRows.join('\n');
 
-            // 在 CSV 開頭加入 BOM 以確保 Excel 正確識別 UTF-8 編碼
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'example.csv';
-            link.click();
+                     // 添加 UTF-8 BOM 防止中文亂碼
+                    const bom = '\uFEFF'; // UTF-8 BOM
+                    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+                    // 生成 CSV 文件並下載
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'example.csv');
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                })
+
+                .catch(error => {
+                    console.error('錯誤:', error);
+                    alert('獲取數據時發生錯誤');
+                });
         });
 
 
