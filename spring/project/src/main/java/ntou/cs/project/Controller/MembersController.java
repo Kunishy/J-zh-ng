@@ -34,108 +34,14 @@ public class MembersController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Autowired
-    private MailService mailService;
-
-    @PostMapping(value = "/regist") // 註冊帳號(發送驗證碼)
-    public ResponseEntity<Object> sendCode(@RequestBody RegisterRequest request) {
+    @PostMapping(value = "/regist") // 註冊帳號
+    public ResponseEntity<Object> register(@RequestBody RegisterRequest request) {
 
         try {
-            String code = mailService.generateCode();
-            memberService.checkExist(request);
-            User newUser = memberService.createUser(request);
-            mailService.saveCode(request.getEmail(), code, newUser);
-            mailService.sendVerificationCode(request.getEmail(), code);
-            return ResponseEntity.ok(Map.of(
-                    "status", true,
-                    "message", "驗證碼已發送至email"));
-        } catch (Exception ex) {
-            System.out.println(ex);
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                            "status", false,
-                            "message", ex.getMessage()));
-        }
-
-    }
-
-    @PostMapping(value = "/verify") // 註冊帳號(加入資料庫)
-    public ResponseEntity<Object> register(@RequestBody VerifyRequest request) {
-
-        try {
-            Map<String, Object> check = mailService.verifyCode(request);
-            if (!(boolean) check.get("status")) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of(
-                                "status", false,
-                                "message", check.get("message")));
-            }
+            memberService.createUser(request);
             return ResponseEntity.ok(Map.of(
                     "status", true,
                     "message", "註冊成功"));
-        } catch (Exception ex) {
-            System.out.println(ex);
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                            "status", false,
-                            "message", ex.getMessage()));
-        }
-
-    }
-
-    @PostMapping(value = "/forgot") // 忘記密碼(發送驗證碼)
-    public ResponseEntity<Object> sendCodeForgot(@RequestBody RegisterRequest request) {
-
-        try {
-            String code = mailService.generateCode();
-            memberService.checkNotExist(request);
-            mailService.saveCode(request.getEmail(), code, null);
-            mailService.sendVerificationCode(request.getEmail(), code);
-            return ResponseEntity.ok(Map.of(
-                    "status", true,
-                    "message", "驗證碼已發送至email"));
-        } catch (Exception ex) {
-            System.out.println(ex);
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                            "status", false,
-                            "message", ex.getMessage()));
-        }
-
-    }
-
-    @PostMapping(value = "/forgotcheck") // 驗證碼確認
-    public ResponseEntity<Object> checkCode(@RequestBody VerifyRequest request) {
-
-        try {
-            Map<String, Object> check = mailService.verifyCode(request);
-            if (!(boolean) check.get("status")) {
-                return ResponseEntity.status(403)
-                        .body(Map.of(
-                                "status", false,
-                                "message", check.get("message")));
-            }
-            return ResponseEntity.ok(Map.of(
-                    "status", true,
-                    "message", "註冊成功"));
-        } catch (Exception ex) {
-            System.out.println(ex);
-            return ResponseEntity.badRequest()
-                    .body(Map.of(
-                            "status", false,
-                            "message", ex.getMessage()));
-        }
-
-    }
-
-    @PostMapping(value = "/resetpass") // 重設密碼
-    public ResponseEntity<Object> resetPassword(@RequestBody RegisterRequest request) {
-
-        try {
-            memberService.resetPass(request);
-            return ResponseEntity.ok(Map.of(
-                    "status", true,
-                    "message", "驗證碼已發送至email"));
         } catch (Exception ex) {
             System.out.println(ex);
             return ResponseEntity.badRequest()
@@ -167,7 +73,8 @@ public class MembersController {
             return ResponseEntity.badRequest()
                     .body(Map.of(
                             "status", false,
-                            "message", ex.getMessage()));
+                            "message", "登入失敗"));
+
         }
     }
 

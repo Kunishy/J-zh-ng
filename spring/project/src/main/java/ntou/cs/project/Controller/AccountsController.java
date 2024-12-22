@@ -5,25 +5,20 @@ import ntou.cs.project.Common.*;
 import ntou.cs.project.Deal.*;
 import ntou.cs.project.repository.*;
 
-import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.gridfs.GridFsResource;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.client.gridfs.model.GridFSFile;
-
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.net.URI;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Map;
+
+import java.nio.file.*;
 
 @RestController
 @RequestMapping(value = "/Account")
@@ -35,24 +30,26 @@ public class AccountsController {
 	@Autowired
 	private AccountRepository repository;
 
-	@Autowired
-	private GridFsTemplate gridFsTemplate;
-
 	@PostMapping(value = "/addAccount", consumes = "multipart/form-data") // 新增帳目
 	public ResponseEntity<Account> createAccount(
 			@RequestParam("data") String data,
-			@RequestParam(value = "attach", required = false) MultipartFile attach) throws Exception {
+			@RequestParam(value = "attach", required = false) MultipartFile attach) throws IOException {
 
 		String userId = getUserID();
 
 		ObjectMapper objectMapper = new ObjectMapper();
 		AccountRequest request = objectMapper.readValue(data, AccountRequest.class);
-		String girdAttach = null;
+		String filePath = null;
 		if (attach != null && !attach.isEmpty()) {
-			girdAttach = myService.saveAttach(attach);
+			String uploadDir = "upload";
+			Path uploadPath = Paths.get(uploadDir);
+			if (!Files.exists(uploadPath)) {
+				Files.createDirectories(uploadPath);
+			}
+			filePath = myService.saveAttach(attach, uploadDir);
 		}
 
-		Account accounts = myService.createAccount(request, girdAttach, userId);
+		Account accounts = myService.createAccount(request, filePath, userId);
 		URI location = ServletUriComponentsBuilder
 				.fromCurrentRequest()
 				.path("/{id}")
@@ -62,95 +59,23 @@ public class AccountsController {
 		return ResponseEntity.created(location).body(accounts);
 	}
 
-	@PostMapping(value = "/budget")
-	public ResponseEntity<?> saveBudget(@RequestBody BudgetRequest breq) throws Exception {
-
-		String userId = getUserID();
-		try {
-			myService.saveBudget(breq, userId);
-			return ResponseEntity.ok().build();
-		} catch (Exception ex) {
-			System.out.println(ex);
-			return ResponseEntity.badRequest()
-					.body(Map.of(
-							"status", false,
-							"message", ex.getMessage()));
-		}
-	}
-
 	@DeleteMapping(value = "/{id}") // 刪除帳目
-	public ResponseEntity<?> deleteAccount(@PathVariable("id") String id) {
+	public ResponseEntity<Account> deleteAccount(@PathVariable("id") String id) {
 		myService.deleteAccount(id);
 		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping // 取得帳目資訊
-	public ResponseEntity<?> getAccounts(@ModelAttribute QueryParameter param) {
-		try {
-			String userId = getUserID();
-			ArrayList<?> items = myService.getAccounts(param, userId);
-			return ResponseEntity.ok(items);
-		} catch (Exception ex) {
-			System.out.println(ex);
-			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-					.body(Map.of(
-							"status", false,
-							"message", ex.getMessage()));
-		}
-	}
-
-	@GetMapping(value = "/{id}") // 取得單一帳目資訊
-	public ResponseEntity<?> getAccount(@PathVariable("id") String id) {
-		Account item = myService.getAccount(id);
-		return ResponseEntity.ok(item);
-	}
-
-	@GetMapping(value = "/budget") // 取得預算
-	public ResponseEntity<?> getBudget() {
-		try {
-			String userId = getUserID();
-			Budget budget = myService.getBudgets(userId);
-			if (budget == null) {
-				return ResponseEntity.noContent().build();
-			}
-			return ResponseEntity.ok(budget);
-		} catch (Exception ex) {
-			System.out.println(ex);
-			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-					.body(Map.of(
-							"status", false,
-							"message", ex.getMessage()));
-		}
-	}
-
-	@GetMapping("/getAttach/{id}")
-	public ResponseEntity<?> getAttach(@PathVariable String id) {
-		try {
-			GridFSFile gridFsFile = gridFsTemplate.findOne(new org.springframework.data.mongodb.core.query.Query(
-					org.springframework.data.mongodb.core.query.Criteria.where("_id").is(id)));
-
-			if (gridFsFile == null) {
-				return ResponseEntity.notFound().build();
-			}
-
-			GridFsResource resource = gridFsTemplate.getResource(gridFsFile);
-
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.parseMediaType(gridFsFile.getMetadata().getString("_contentType")));
-
-			return ResponseEntity.ok()
-					.headers(headers)
-					.body(resource.getInputStream().readAllBytes());
-
-		} catch (Exception ex) {
-			return ResponseEntity.status(500).body("Error retrieving file: " + ex.getMessage());
-		}
+	public ResponseEntity<ArrayList<Account>> getAccounts(@ModelAttribute QueryParameter param) {
+		String userId = getUserID();
+		ArrayList<Account> items = myService.getAccounts(param, userId);
+		return ResponseEntity.ok(items);
 	}
 
 	@PatchMapping(value = "/{id}", consumes = "multipart/form-data") // 更新帳目
 	public ResponseEntity<Account> updateProduct(
 			@PathVariable("id") String id, @RequestParam("data") String data,
-			@RequestParam(value = "attach", required = false) MultipartFile attach) throws Exception {
+			@RequestParam(value = "attach", required = false) MultipartFile attach) throws IOException {
 
 		ObjectMapper objectMapper = new ObjectMapper();
 		AccountRequest updatedFields = objectMapper.readValue(data, AccountRequest.class);
@@ -159,16 +84,11 @@ public class AccountsController {
 		return ResponseEntity.ok(updatedAccount);
 	}
 
-	private String getUserID() throws Exception {
-		try {
-			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-			User userDetails = (User) authentication.getPrincipal();
-			String userId = userDetails.getID();
+	private String getUserID() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		User userDetails = (User) authentication.getPrincipal();
 
-			return userId;
-		} catch (Exception ex) {
-
-			throw new RuntimeException("請重新登入");
-		}
+		String userId = userDetails.getID();
+		return userId;
 	}
 }
